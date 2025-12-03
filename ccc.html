@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal FaceLock - Only Your Face Opens</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 70px rgba(0,0,0,0.35);
+            padding: 50px 40px;
+            max-width: 550px;
+            width: 100%;
+        }
+
+        .lock-screen {
+            text-align: center;
+        }
+
+        .lock-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .lock-screen h1 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .lock-screen .subtitle {
+            color: #999;
+            margin-bottom: 35px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 25px;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #000;
+            border: 3px solid #667eea;
+        }
+
+        #video {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .step-indicator {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .step-indicator.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .status {
+            padding: 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-weight: 500;
+            text-align: center;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .status.registering {
+            background: #fff3e0;
+            color: #f57c00;
+            border-left: 4px solid #f57c00;
+        }
+
+        .status.matching {
+            background: #f3e5f5;
+            color: #7b1fa2;
+            border-left: 4px solid #7b1fa2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border-left: 4px solid #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #c62828;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .protected-content {
+            display: none;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        .protected-content.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .success-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .welcome-section h2 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 32px;
+        }
+
+        .welcome-section p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .protected-box {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+
+        .protected-box h3 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        .protected-box p {
+            color: #555;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+        }
+
+        .logout-btn:hover {
+            box-shadow: 0 10px 25px rgba(244, 67, 54, 0.4);
+        }
+
+        .info-text {
+            font-size: 13px;
+            color: #999;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- REGISTRATION & LOCK SCREEN -->
+        <div class="lock-screen" id="lockScreen">
+            <div class="lock-icon">🔐</div>
+            <h1>FaceLock Security</h1>
+            <p class="subtitle">Only Your Face Can Open This</p>
+
+            <div class="step-indicator" id="stepIndicator">STEP 1: REGISTER YOUR FACE</div>
+
+            <div class="video-container">
+                <video id="video" autoplay muted playsinline></video>
+            </div>
+
+            <div class="status loading" id="status">
+                Initializing facial recognition...
+            </div>
+
+            <button id="actionBtn" disabled>
+                REGISTER YOUR FACE
+            </button>
+
+            <p class="info-text">Position your face clearly in the camera frame</p>
+        </div>
+
+        <!-- PROTECTED CONTENT -->
+        <div class="protected-content" id="protectedContent">
+            <div class="welcome-section">
+                <div class="success-badge">✓ Face Verified</div>
+                <h2>Welcome Back!</h2>
+                <p>Your facial recognition unlocked this page</p>
+            </div>
+
+            <div class="protected-box">
+                <h3>🔒 Private Content</h3>
+                <p>This page is protected by facial recognition. Only your registered face can access this content. No other person's face will unlock this page.</p>
+                <p style="margin-top: 15px;">Your biometric data is stored securely and only used for authentication on this device.</p>
+            </div>
+
+            <button class="logout-btn" id="logoutBtn">
+                LOGOUT & RESET
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const VIDEO = document.getElementById('video');
+        const STATUS = document.getElementById('status');
+        const ACTION_BTN = document.getElementById('actionBtn');
+        const STEP_IND = document.getElementById('stepIndicator');
+        
+        let storedFaceDescriptor = null;
+        let registrationPhase = true;
+        let isProcessing = false;
+
+        // Initialize face detection models
+        async function initializeModels() {
+            try {
+                STATUS.textContent = 'Loading facial recognition system...';
+                STATUS.className = 'status loading';
+
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model/';
+                
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                ]);
+
+                STATUS.textContent = 'Ready! Click button to start registration';
+                STATUS.className = 'status registering';
+                ACTION_BTN.disabled = false;
+                startCamera();
+            } catch (err) {
+                STATUS.textContent = '❌ Error loading system. Refresh the page.';
+                STATUS.className = 'status error';
+                ACTION_BTN.disabled = true;
+            }
+        }
+
+        // Start camera access
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        width: 550,
+                        height: 350,
+                        facingMode: 'user'
+                    }
+                });
+                VIDEO.srcObject = stream;
+                VIDEO.play();
+            } catch (err) {
+                STATUS.textContent = '❌ Camera access denied. Please allow camera permission.';
+                STATUS.className = 'status error';
+            }
+        }
+
+        // Detect and capture face
+        async function detectFace() {
+            const detection = await faceapi
+                .detectSingleFace(VIDEO, new faceapi.TinyFaceDetectorOptions())
+                .withFaceDescriptor();
+
+            return detection;
+        }
+
+        // Registration phase - capture user's face
+        async function registerFace() {
+            if (isProcessing) return;
+            isProcessing = true;
+            ACTION_BTN.disabled = true;
+
+            STATUS.textContent = '📸 Position your face and stay still...';
+            STATUS.className = 'status registering';
+            STEP_IND.textContent = 'STEP 1: CAPTURING YOUR FACE';
+
+            try {
+                let detectionCount = 0;
+                const maxDetections = 5;
+
+                const captureInterval = setInterval(async () => {
+                    const detection = await detectFace();
+
+                    if (detection) {
+                        detectionCount++;
+                        STATUS.textContent = `📸 Capturing... ${detectionCount}/${maxDetections}`;
+
+                        if (detectionCount === 1) {
+                            storedFaceDescriptor = detection.descriptor;
+                        }
+
+                        if (detectionCount >= maxDetections) {
+                            clearInterval(captureInterval);
+                            STATUS.textContent = '✓ Face registered successfully!';
+                            STATUS.className = 'status success';
+                            
+                            registrationPhase = false;
+                            STEP_IND.textContent = 'STEP 2: READY FOR VERIFICATION';
+                            ACTION_BTN.textContent = 'VERIFY MY FACE NOW';
+                            ACTION_BTN.disabled = false;
+                            isProcessing = false;
+                        }
+                    } else {
+                        STATUS.textContent = '⚠️ Face not detected. Please position your face clearly.';
+                        STATUS.className = 'status matching';
+                    }
+                }, 600);
+
+            } catch (err) {
+                STATUS.textContent = '❌ Error during registration.';
+                STATUS.className = 'status error';
+                isProcessing = false;
+                ACTION_BTN.disabled = false;
+            }
+        }
+
+        // Verification phase - match face
+        async function verifyFace() {
+            if (isProcessing || !storedFaceDescriptor) return;
+            isProcessing = true;
+            ACTION_BTN.disabled = true;
+
+            STATUS.textContent = '👁️ Scanning your face for verification...';
+            STATUS.className = 'status matching';
+            STEP_IND.textContent = 'STEP 2: VERIFYING YOUR FACE';
+
+            try {
+                let attempts = 0;
+                const maxAttempts = 30;
+
+                const verifyInterval = setInterval(async () => {
+                    attempts++;
+                    const detection = await detectFace();
+
+                    if (detection) {
+                        const distance = faceapi.euclideanDistance(
+                            storedFaceDescriptor,
+                            detection.descriptor
+                        );
+
+                        console.log(`Attempt ${attempts}: Distance = ${distance.toFixed(3)}`);
+
+                        // Strict matching - only 0.5 or lower
+                        if (distance < 0.5) {
+                            clearInterval(verifyInterval);
+                            STATUS.textContent = '✓✓✓ FACE MATCHED! UNLOCKING...';
+                            STATUS.className = 'status success';
+                            STEP_IND.textContent = 'UNLOCKED!';
+                            
+                            setTimeout(unlockContent, 1000);
+                        } else if (attempts > maxAttempts) {
+                            clearInterval(verifyInterval);
+                            STATUS.textContent = '❌ Face does not match. Not authorized.';
+                            STATUS.className = 'status error';
+                            ACTION_BTN.textContent = 'TRY AGAIN';
+                            ACTION_BTN.disabled = false;
+                            isProcessing = false;
+                        }
+                    }
+                }, 400);
+
+            } catch (err) {
+                STATUS.textContent = '❌ Verification error.';
+                STATUS.className = 'status error';
+                isProcessing = false;
+                ACTION_BTN.disabled = false;
+            }
+        }
+
+        // Unlock and show content
+        function unlockContent() {
+            document.getElementById('lockScreen').style.display = 'none';
+            document.getElementById('protectedContent').classList.add('active');
+            stopCamera();
+        }
+
+        // Logout - reset everything
+        function logout() {
+            storedFaceDescriptor = null;
+            registrationPhase = true;
+            isProcessing = false;
+            location.reload();
+        }
+
+        // Stop camera
+        function stopCamera() {
+            if (VIDEO.srcObject) {
+                VIDEO.srcObject.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // Button click handler
+        ACTION_BTN.addEventListener('click', () => {
+            if (registrationPhase) {
+                registerFace();
+            } else {
+                verifyFace();
+            }
+        });
+
+        // Logout button
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopCamera);
+
+        // Start initialization
+        initializeModels();
+    </script>
+</body>
+</html>
